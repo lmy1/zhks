@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.OrgAndAreaMapper">
+	<resultMap id="hash" type="HashMap" >
+		<result column="ID" property="value"/>
+		<result column="CLASSIFY_NAME" property="label" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<resultMap id="AreaInfoResultMap" type="com.cd.zj.bean.AreaInfo" >
+		<result column="zonecode" property="code" jdbcType="VARCHAR" />
+		<result column="cnname" property="name" jdbcType="VARCHAR" />
+		<result column="upzone" property="pcode" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<select id="selectOrg" resultMap="hash">
+		select o.org_code value,o.org_name label from tbl_org o where o.region_code='330211'
+	</select>
+
+	<select id="selectRegion" resultMap="AreaInfoResultMap">
+		select s.regioncode zonecode,s.regionname cnname,s.parentid upzone
+		from tbl_areainfo s start with s.regioncode='330211' connect by prior s.regioncode=s.parentid
+	</select>
+
+	<select id="relateExam" resultMap="hash">
+		select o.id value,o.name label from tbl_exam o where o.is_delete='0' and o.is_enable='0'
+	</select>
+</mapper>

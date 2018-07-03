@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.TblTopicMapper" >
+	<resultMap id="BaseResultMap" type="com.cd.zj.entity.TblTopic" >
+		<id column="ID" property="id" jdbcType="DECIMAL" />
+		<result column="CLASSIFY_KIND" property="classifyKind" jdbcType="VARCHAR" />
+		<result column="TOPICS" property="topics" jdbcType="VARCHAR" />	
+		<result column="ANSWER" property="answer" jdbcType="VARCHAR" />
+		<result column="RESOLVE" property="resolve" jdbcType="VARCHAR" />
+		<result column="CREATE_TIME" property="createTime" jdbcType="TIMESTAMP" />
+		<result column="CREATE_PERSON" property="createPerson" jdbcType="VARCHAR" />
+		<result column="IS_DELETE" property="isDelete" jdbcType="VARCHAR" />
+		<result column="TOPIC_TYPE" property="topicType" jdbcType="VARCHAR" />
+	</resultMap>
+	<sql id="Base_Column_List" >
+		ID, CLASSIFY_KIND, TOPICS, ANSWER, RESOLVE, CREATE_TIME, CREATE_PERSON, 
+		IS_DELETE,TOPIC_TYPE
+	</sql>
+
+	<select id="findTopic" resultMap="BaseResultMap" parameterType="java.util.Map">
+		SELECT <include refid="Base_Column_List"></include> FROM (SELECT * FROM TBL_TOPIC where IS_DELETE=#{isDelete,jdbcType=VARCHAR} 
+						and CLASSIFY_KIND like #{kind,jdbcType=VARCHAR}||'%' 
+						and TOPIC_TYPE=#{topicType,jdbcType=VARCHAR}
+						order by dbms_random.value) 
+			WHERE rownum <![CDATA[ <= ]]> #{number,jdbcType=DECIMAL}
+	</select>
+</mapper>

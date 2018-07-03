@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.TblClassifyMapper" >
+	<resultMap id="BaseResultMap" type="com.cd.zj.entity.TblClassify" >
+		<id column="ID" property="id" jdbcType="VARCHAR" />
+		<result column="CLASSIFY_NAME" property="classifyName" jdbcType="VARCHAR" />
+		<result column="LEVELS" property="levels" jdbcType="VARCHAR" />
+		<result column="PARENT_KEY" property="parentKey" jdbcType="VARCHAR" />
+		<result column="IS_HIDDEN" property="isHidden" jdbcType="VARCHAR" />
+		<result column="IS_DELETE" property="isDelete" jdbcType="VARCHAR" />
+	</resultMap>
+	<sql id="Base_Column_List" >
+		ID, CLASSIFY_NAME, LEVELS, PARENT_KEY, IS_HIDDEN, IS_DELETE
+	</sql>
+
+	<select id="relateClassify" resultMap="BaseResultMap" parameterType="java.util.Map">
+			select  <include refid="Base_Column_List" />
+			  from tbl_CLASSIFY 
+			 where id in (select x.id
+			                  from tbl_CLASSIFY x
+			                 where x.is_hidden = #{hidden,jdbcType=VARCHAR}
+			                   and x.is_delete = #{delete,jdbcType=VARCHAR}
+			                   and x.levels='1')
+			    or parent_key in (select x.id
+			                         from tbl_CLASSIFY x
+			                        where x.is_hidden = #{hidden,jdbcType=VARCHAR}
+			                   and x.is_delete = #{delete,jdbcType=VARCHAR}
+			                   and x.levels='1')
+			    and is_delete = #{delete,jdbcType=VARCHAR} and is_hidden = #{hidden,jdbcType=VARCHAR}
+	</select>
+
+	<resultMap id="hash" type="HashMap" >
+		<result column="ID" property="value"/>
+		<result column="CLASSIFY_NAME" property="label" jdbcType="VARCHAR" />
+	</resultMap>
+
+	<select id="firstLevelClassify" resultMap="hash" parameterType="java.util.Map">
+		select x.id,x.CLASSIFY_NAME
+			from tbl_CLASSIFY x
+				where x.is_hidden = #{hidden,jdbcType=VARCHAR}
+				and x.is_delete = #{delete,jdbcType=VARCHAR}
+				and x.levels='1'
+	</select>
+
+	<select id="secondLevelClassify" resultMap="hash" parameterType="java.util.Map">
+		select x.id,x.CLASSIFY_NAME
+			from tbl_CLASSIFY x
+				where x.is_hidden = #{hidden,jdbcType=VARCHAR}
+				and x.is_delete = #{delete,jdbcType=VARCHAR}
+				and x.parent_key = #{parentId,jdbcType=VARCHAR}
+				and x.levels='2'
+	</select>
+
+	<select id="isUsed" resultType="java.lang.Integer" parameterType="java.lang.String">
+		select sum(a.x)
+		from ((select count(*) x
+			from TBL_DATUM
+			where CLASSIFY_KIND like '%' || #{id,jdbcType=VARCHAR} || '%' and is_delete='0') union
+			(select count(*) x
+			from TBL_EXAM
+			where LEVEL_FIRST like '%' || #{id,jdbcType=VARCHAR} || '%' and is_delete='0') union
+			(select count(*) x
+				from TBL_EXAM_TOPICNUM u
+				inner join TBL_EXAM e
+				on u.exam_id=e.id
+			where e.is_delete = '0' and LEVEL_SECOND like '%' || #{id,jdbcType=VARCHAR} || '%') union
+			(select count(*) x
+			from TBL_TOPIC
+			where CLASSIFY_KIND like '%' || #{id,jdbcType=VARCHAR} || '%'  and is_delete='0')) a
+	</select>
+</mapper>

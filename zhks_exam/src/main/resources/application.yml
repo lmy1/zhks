@@ -1,0 +1,22 @@
+##
+spring:
+  mvc:
+    formcontent:
+      putfilter:
+        enabled: true
+  jpa:
+    show-sql: true
+  profiles:
+    active:
+      - dev
+  http:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
+mybatis:
+  config-location: classpath:static/mybatis-config.xml
+  mapper-locations: classpath:static/mapper/*.xml
+logging:
+  config: classpath:log4j2.xml
+  level:
+    com.cd: DEBUG

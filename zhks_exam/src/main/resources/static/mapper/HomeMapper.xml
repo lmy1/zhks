@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.HomeMapper" >
+
+	<select id="viewSchedule" resultType="com.cd.zj.bean.result.Schedule" parameterType="com.cd.zj.bean.query.ScheduleQuery">
+		<if test="type==0">
+			select e.id id, e.exam_name examName, u.name names, o.org_name orgName
+			  from tbl_user u
+			 inner join tbl_org o
+			    on u.org_id = o.id
+			 inner join tbl_exam_user eu
+			    on eu.user_id = u.id
+			 inner join tbl_exam e
+			    on e.id = eu.exam_id
+			 where e.is_delete = '0'
+			       and e.exam_model='1'
+			       and e.is_enable='0'
+			      and u.ID = #{userId,jdbcType=DECIMAL}
+			   and to_char(e.end_time, 'yyyy-mm-dd hh24:mi:ss') &lt;
+			       to_char(current_date, 'yyyy-mm-dd hh24:mi:ss')
+			   and not exists (select 1
+			          from tbl_score s
+			         inner join tbl_exam ex
+			            on ex.id = s.exam_id
+			         where ex.is_delete = '0'
+			           and ex.is_enable='0'
+			           and ex.exam_model='1'
+			           and ex.id = e.id
+			           and s.user_id = u.id)
+		</if>
+		<if test="type==1">
+			select e.id id, e.exam_name examName, u.name names, o.org_name orgName
+			  from tbl_user u
+			 inner join tbl_org o
+			    on u.org_id = o.id
+			 inner join tbl_exam_user eu
+			    on eu.user_id = u.id
+			 inner join tbl_exam e
+			    on e.id = eu.exam_id
+			 where e.is_delete = '0'
+			       and e.exam_model='1'
+			       and e.is_enable='0'
+			      and o.org_code = #{orgCode,jdbcType=VARCHAR}
+			   and to_char(e.end_time, 'yyyy-mm-dd hh24:mi:ss') &lt;
+			       to_char(current_date, 'yyyy-mm-dd hh24:mi:ss')
+			   and not exists (select 1
+			          from tbl_score s
+			         inner join tbl_exam ex
+			            on ex.id = s.exam_id
+			         where ex.is_delete = '0'
+			           and ex.is_enable='0'
+			           and ex.exam_model='1'
+			           and ex.id = e.id
+			           and s.user_id = u.id)
+		</if>
+		<if test="type==2">
+			select e.id id, e.exam_name examName, u.name names, o.org_name orgName
+			  from tbl_user u
+			 inner join tbl_org o
+			    on u.org_id = o.id 
+			 inner join tbl_exam_user eu
+			    on eu.user_id = u.id
+			 inner join tbl_exam e
+			    on e.id = eu.exam_id
+			 where e.is_delete = '0'
+			       and e.exam_model='1'
+			       and e.is_enable='0'
+			   and to_char(e.end_time, 'yyyy-mm-dd hh24:mi:ss') &lt;
+			       to_char(current_date, 'yyyy-mm-dd hh24:mi:ss')
+			   and not exists (select 1
+			          from tbl_score s
+			         inner join tbl_exam ex
+			            on ex.id = s.exam_id
+			         where ex.is_delete = '0'
+			           and ex.is_enable='0'
+			           and ex.exam_model='1'
+			           and ex.id = e.id
+			           and s.user_id = u.id)
+		</if>
+	</select>
+
+	<select id="unitExam" resultType="com.cd.zj.bean.result.CountResult">
+		select rownum id, a.*
+		  from (select o.org_name name,
+		               ROUND(nvl(sum(s.score) / count(s.user_id), 0), 1) score
+		          from tbl_exam u
+		          left join (select ss.EXAM_ID, ss.USER_ID, max(ss.score) score
+		                      from tbl_score ss
+		                     group by ss.EXAM_ID, ss.USER_ID) s
+		            on u.id = s.EXAM_ID
+		         inner join tbl_user us
+		            on us.id = s.USER_ID
+		         inner join tbl_org o
+		            on o.id = us.org_id
+		         where u.id =
+		               (select ex.id
+		                  from tbl_exam ex
+		                 where ex.end_time =
+		                       (select max(e.end_time)
+		                          from tbl_exam e
+		                         where e.exam_model = '1'
+		                           and to_char(e.end_time, 'yyyy-mm-dd hh24:mi:ss') &lt;
+		                               to_char(current_date, 'yyyy-mm-dd hh24:mi:ss'))
+		                   and rownum &lt;= 1)
+		         group by o.org_name
+		         order by score desc) a
+		 order by a.score desc, id asc
+	</select>
+
+	<select id="passRate" resultType="com.cd.zj.bean.result.HomeResult">
+		select o.org_name name,
+		       ROUND((sum(case
+		                    when a.score >= e.PASS_SCORE then
+		                     1
+		                    else
+		                     0
+		                  end) / count(*)) * 100,
+		             2) percent
+		  from tbl_exam e
+		  left join (select s.exam_id,s.user_id, max(s.score) score
+		               from tbl_score s
+		              inner join tbl_exam ex
+		                 on ex.id = s.exam_id
+		              where 1 = 1
+		                and ex.exam_model = '1'
+		              group by s.exam_id,s.user_id) a
+		    on e.id = a.exam_id
+		 inner join tbl_user us on us.id =a.user_id
+		 inner join tbl_org o
+		    on o.id =us.org_id
+		 where 1 = 1
+		   and e.exam_model = '1'
+		 group by o.org_name
+	</select>
+
+	<select id="historyScore" resultType="com.cd.zj.bean.result.CountResult" parameterType="java.lang.Long">
+		select to_char(s.end_time,'YYYY-MM-DD') name, max(s.score) score
+	      from tbl_exam e
+	      inner join tbl_score s
+	        on s.exam_id = e.id
+	     where 1=1
+	     <if test="userId!=null">
+	      and s.user_id =#{userId,jdbcType=DECIMAL}
+	     </if>
+	     and e.exam_model = '1'
+	     and e.is_delete='0'
+	    group by to_char(s.end_time,'YYYY-MM-DD')
+	    order by to_char(s.end_time,'YYYY-MM-DD')
+	</select>
+
+	<select id="findData" resultType="java.sql.Timestamp" parameterType="java.lang.Long">
+		select e.end_time endTime
+	      from tbl_exam e
+	      inner join tbl_score eu on eu.exam_id=e.id 
+	     where to_char(e.end_time, 'yyyy-mm-dd hh24:mi:ss') &lt;=
+	           to_char(current_date, 'yyyy-mm-dd hh24:mi:ss')
+	       and e.exam_model = '1'
+	       and e.is_delete='0'
+	       <if test="userId!=null">
+	        and eu.user_id=#{userId,jdbcType=DECIMAL}
+	       </if>
+	       order by endTime asc
+	</select>
+
+	<select id="personPass" resultType="com.cd.zj.bean.result.HomeResult" parameterType="java.util.Map">
+		select #{time,jdbcType=TIMESTAMP} name,
+           (sum(case
+                  when a.score >= e.PASS_SCORE then
+                   1
+                  else
+                   0
+                end) / count(*)) * 100 percent
+      from tbl_exam e
+      left join (select s.exam_id,s.user_id, max(s.score) score
+                   from tbl_score s
+                  inner join tbl_exam ex
+                     on ex.id = s.exam_id
+                  where 1 = 1
+                    and ex.exam_model = '1'
+                  group by s.exam_id,s.user_id) a
+        on a.exam_id = e.id
+       inner join tbl_user eu
+        on eu.id = a.user_id
+     where e.end_time &lt;= #{time,jdbcType=TIMESTAMP}
+       and e.exam_model = '1'
+       and eu.id=#{userId,jdbcType=DECIMAL}
+	</select>
+</mapper>

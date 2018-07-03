@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.TblExamMapper" >
+	<resultMap id="BaseResultMap" type="com.cd.zj.entity.TblExam" >	
+		<id column="ID" property="id" jdbcType="DECIMAL" />
+		<result column="EXAM_NAME" property="examName" jdbcType="VARCHAR" />
+		<result column="EXAM_TYPE" property="examType" jdbcType="VARCHAR" />
+		<result column="EXAM_MODEL" property="examModel" jdbcType="VARCHAR" />
+		<result column="START_TIME" property="startTime" jdbcType="TIMESTAMP" />
+		<result column="END_TIME" property="endTime" jdbcType="TIMESTAMP" />
+		<result column="TOTAL" property="total" jdbcType="DECIMAL" />
+		<result column="SCORE" property="score" jdbcType="DECIMAL" />
+		<result column="SOLVE_TYPE" property="solveType" jdbcType="VARCHAR" />
+		<result column="PASS_SCORE" property="passScore" jdbcType="DECIMAL" />
+		<result column="EXCEL_SCORE" property="excelScore" jdbcType="DECIMAL" />
+		<result column="ANSWER_TIME" property="answerTime" jdbcType="DECIMAL" />
+		<result column="LEVEL_FIRST" property="levelFirst" jdbcType="VARCHAR" />
+		<result column="IS_DELETE" property="isDelete" jdbcType="VARCHAR" />
+		<result column="IS_ENABLE" property="isEnable" jdbcType="VARCHAR" />
+		<result column="CREATE_TIME" property="createTime" jdbcType="TIMESTAMP" />
+	</resultMap>
+
+	<select id="findExamByUser" resultType="com.cd.zj.entity.TblExam" parameterType="com.cd.zj.bean.query.ExamQuerys">
+		select e.id id,e.EXAM_NAME examName,e.TOTAL total,c.CLASSIFY_NAME levelFirst ,e.start_time startTime,e.end_time endTime
+		from tbl_exam e
+		<if test=' type=="1" or type=="0" '>
+			inner join TBL_EXAM_USER u on e.id = u.EXAM_ID 
+		</if>
+		left join tbl_CLASSIFY c on c.ID=e.LEVEL_FIRST
+		<where>
+			<if test=' type=="1" or type=="0" '>
+				<if test='userId!=null '>
+					u.USER_ID=#{userId,jdbcType=DECIMAL}
+				</if>
+			</if>
+			<if test='name!=null and name!=""'>
+				and e.EXAM_NAME like '%'||#{name,jdbcType=VARCHAR}
+			</if>
+			<if test='kind!=null and kind!=""'>
+				and e.LEVEL_FIRST=#{kind,jdbcType=VARCHAR}
+			</if>
+			<!-- and (e.EXAM_MODEL=#{type,jdbcType=VARCHAR} or e.EXAM_TYPE='0') -->
+			<if test=' type=="1" or type=="0" '>
+				and e.EXAM_MODEL=#{type,jdbcType=VARCHAR}
+			</if>
+			<if test=' type=="2"'>
+				and e.EXAM_MODEL='0'
+			</if>
+			and e.IS_DELETE='0' and e.IS_ENABLE='0'
+		</where>
+	</select>
+</mapper>

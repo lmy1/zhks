@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.cd.zj.mapper.CountMapper" >
+	<resultMap type="com.cd.zj.bean.result.CountResult" id="BaseResultMap">
+		<result column="id" property="id" jdbcType="DECIMAL"/>
+		<result column="name" property="name" jdbcType="VARCHAR"/>
+		<result column="score" property="score" jdbcType="DECIMAL"/>
+	</resultMap>
+	<resultMap type="com.cd.zj.bean.result.CountTrain" id="BaseResultMap_01">
+		<result column="id" property="id" jdbcType="DECIMAL"/>
+		<result column="name" property="name" jdbcType="VARCHAR"/>
+		<result column="percent" property="percent" jdbcType="DECIMAL"/>
+	</resultMap>
+
+	<select id="findCompanyPx" parameterType="java.lang.Long" resultMap="BaseResultMap">
+		select rownum id, a.*
+		  from (select o.org_name name,
+		               ROUND(nvl(sum(s.score) / count(s.user_id), 0), 1) score
+		          from tbl_exam e
+		          inner join (select ss.EXAM_ID, ss.USER_ID, max(ss.score) score
+		                      from tbl_score ss
+		                     group by ss.EXAM_ID, ss.USER_ID) s
+		            on e.id = s.EXAM_ID
+		         inner join tbl_user u
+		            on u.id = s.USER_ID
+		         inner join tbl_org o
+		            on o.id = u.org_id
+		         where e.id = #{id, jdbcType = DECIMAL}
+		         group by o.org_name
+		         order by score desc) a
+		 order by a.score desc, id asc
+	</select>
+
+	<select id="personSorce" resultMap="BaseResultMap" parameterType="java.util.Map">
+		select rownum id, a.*
+		    from (select u.name name, ROUND(nvl(sum(s.score) / count(s.user_id), 0),1) score
+		      from tbl_user u
+		      inner join (select ss.EXAM_ID, ss.USER_ID, max(ss.score) score
+				                      from tbl_score ss
+				                     group by ss.EXAM_ID, ss.USER_ID) s
+		      on u.id = s.user_id
+		      inner join tbl_org o on o.id=u.org_id
+		      where 1=1
+			<if test='name!=null and name!=""'>
+			and o.org_code=#{name,jdbcType=VARCHAR}
+			</if>
+			and s.exam_id=#{id,jdbcType=DECIMAL}
+			group by u.id,u.name
+			order by score desc) a order by a.score desc,id asc
+	</select>
+
+	<select id="countTrain" resultMap="BaseResultMap_01" parameterType="java.util.Map">
+		select rownum id, a.name, a.percent
+		  from (select s.org_name name,
+		               case count(distinct t.user_id)
+		                 when 0 then
+		                  0
+		                 else
+		                  ROUND((count(distinct t.user_id) /
+		                        (select count(distinct eu.user_id)
+		                            from tbl_exam_user eu
+		                           inner join tbl_org org
+		                              on org.org_code = eu.org_code
+		                           inner join tbl_exam exa
+		                              on exa.id = eu.exam_id
+		                           inner join tbl_user us
+		                              on us.id = eu.user_id
+		                           where org.org_name = s.org_name )) * 100,
+		                        2)
+		               end percent
+		          from TBL_EXAM_USER u
+		          left join tbl_train t
+		            on u.user_id = t.user_id
+		          inner join TBL_DATUM d
+		            on d.id=t.DATUM_ID
+		         inner join tbl_org s
+		            on s.ORG_code = u.ORG_code
+		         where 1 = 1
+		               and (d.IS_DELETE = '0' or d.IS_DELETE is null)
+                       and (d.is_HIDDEN = '0' or d.is_HIDDEN is null)
+		             <if test='startTime!=null'>
+				        and t.start_time>=#{startTime,jdbcType=TIMESTAMP}
+				      </if>
+				      <if test='endTime!=null'>
+				        and t.start_time <![CDATA[ <=]]> #{endTime,jdbcType=TIMESTAMP}
+				      </if>
+		         group by s.org_name) a
+	</select>
+
+	<select id="queryTrain" parameterType="com.cd.zj.bean.query.TrainQuery" resultType="com.cd.zj.bean.result.TrainResult">
+			select t.id,
+				 d.datum_name datumName,
+				 t.times time,
+				 to_char(t.start_time, 'yyyy-MM-dd HH24:mi:ss') startTime
+		from tbl_datum d
+		inner join tbl_train t
+			on d.id = t.datum_id
+		where 1=1
+		<if test='startTime!=null'>
+			and t.start_time>=#{startTime,jdbcType=TIMESTAMP}
+		</if>
+		<if test='endTime!=null'>
+			and t.start_time <![CDATA[ <=]]> #{endTime,jdbcType=TIMESTAMP}
+		</if>
+		and t.user_id=#{person,jdbcType=VARCHAR}
+		and d.IS_DELETE='0'
+		and d.is_HIDDEN='0'
+	</select>
+
+	<select id="queryScore" parameterType="com.cd.zj.bean.query.TrainQuery" resultType="com.cd.zj.bean.result.ScoreResult">
+		select s.id,
+				 e.exam_name	examName,
+				 s.score,
+				 s.times time,
+				 to_char(s.start_time, 'yyyy-MM-dd HH24:mi:ss') startTime,
+				 to_char(s.end_time, 'yyyy-MM-dd HH24:mi:ss')	 endTime
+		from tbl_score s
+	 inner join tbl_exam e
+			on e.id = s.exam_id
+	where 1=1
+	<if test='startTime!=null'>
+		and s.start_time>=#{startTime,jdbcType=TIMESTAMP}
+	</if>
+	<if test='endTime!=null'>
+		and s.start_time <![CDATA[ <=]]> #{endTime,jdbcType=TIMESTAMP}
+	</if>
+	and s.user_id=#{person,jdbcType=VARCHAR}
+	</select>
+
+	<select id="queryReport" parameterType="com.cd.zj.bean.query.ReportQuery" resultType="com.cd.zj.bean.result.ReportResult">
+		select
+		 r.id,
+		 r.context,
+		 u.name createPerson,
+		 us.name userName,
+		 r.createtime createtime
+		 from 
+		 <if test='type==0'>
+		 	tbl_report
+		 </if>
+		 <if test='type==1'>
+		 	tbl_report_user
+		 </if>
+		  r inner join tbl_user u on u.id=r.createperson inner join tbl_user us on us.id=r.userId
+		 inner join tbl_org o on o.id=u.org_id
+		where 1=1
+		<if test='context != null and context != ""'>
+			and r.context like '%'||#{context,jdbcType=VARCHAR}||'%'
+		</if> 
+		<if test='userName != null and userName != ""'>
+			and us.name like '%'||#{userName,jdbcType=VARCHAR}||'%'
+		</if> 
+		<if test='personName != null and personName != ""'>
+			and u.name like '%'||#{personName,jdbcType=VARCHAR}||'%'
+		</if> 
+		<if test='orgCode != null and orgCode != ""'>
+			and o.org_code=#{orgCode,jdbcType=VARCHAR}
+		</if> 
+		<if test='userId !=null'>
+			and us.id=#{userId,jdbcType=DECIMAL}
+		</if> 
+	</select>
+
+	<select id="findNum" resultType="java.lang.Long" parameterType="java.lang.Long">
+			select sum(a)
+				  from (select count(*) a
+				          from tbl_exam ex
+				         inner join TBL_EXAM_TOPICNUM nu
+				            on ex.id = nu.EXAM_ID
+				         inner join tbl_exam_topic e
+				            on e.TOPICNUM_ID = nu.EXAM_ID
+				         where e.topic_id = #{id,jdbcType=DECIMAL}
+				           and ex.IS_DELETE = '0'
+				        union
+				        select count(*) a
+				          from tbl_datum t
+				         inner join tbl_datum_topic d
+				            on t.id = d.DATUM_ID
+				         where d.topic_id = #{id,jdbcType=DECIMAL}
+				           and t.IS_DELETE = '0')
+	</select>
+
+	<select id="countNum" resultType="java.lang.Long" parameterType="java.lang.Long">
+		select sum(a)
+		from (select count(*) a
+				from tbl_exam_user us
+				where us.user_id =#{id,jdbcType=DECIMAL}
+			union
+				select count(*) a
+				from tbl_train t
+				where t.user_id =#{id,jdbcType=DECIMAL})
+	</select>
+
+	<select id="countExamNum" resultType="java.lang.Long" parameterType="java.lang.Long">
+		select count(*) from tbl_exam_user u where u.exam_id=#{id,jdbcType=DECIMAL}
+	</select>
+</mapper>
